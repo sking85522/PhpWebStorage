@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhpWebStorage Dynamic Tester</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 850px; margin: 30px auto; padding: 20px; background-color: #f4f6f9; color: #333; }
+        .card { background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1 { color: #2c3e50; margin-top: 0; text-align: center; font-size: 26px; }
+        label { display: block; margin-top: 15px; font-weight: 600; color: #495057; }
+        select, input[type="text"], input[type="file"] { width: 100%; padding: 10px 12px; margin-top: 6px; border: 1px solid #ced4da; border-radius: 6px; font-size: 15px; }
+        select:focus, input:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+        .field-group { transition: all 0.3s ease; }
+        .hidden { display: none !important; }
+        button { background-color: #007bff; color: white; border: none; padding: 12px 20px; margin-top: 20px; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; transition: background-color 0.2s; }
+        button:hover { background-color: #0056b3; }
+        pre { background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; font-family: 'Consolas', monospace; font-size: 14px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #6c757d; color: white; margin-left: 5px; }
+        .preview-box { margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 6px; display: none; }
+        .preview-box a { color: #007bff; font-weight: bold; text-decoration: none; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>📁 PhpWebStorage Dynamic Manager</h1>
+        
+        <form id="storageForm">
+            <!-- API Key (Always Required) -->
+            <div class="field-group">
+                <label for="apikey">API Key <span class="badge">Required</span></label>
+                <input type="text" id="apikey" name="apikey" value="4566545" required>
+            </div>
+
+            <!-- Main Action Selector -->
+            <div class="field-group">
+                <label for="action">Select Action <span class="badge">Operation</span></label>
+                <select id="action" name="action">
+                    <option value="upload" selected>1. Upload Local File (upload)</option>
+                    <option value="byurl">2. Download Remote File by URL (byurl)</option>
+                    <option value="replace">3. Replace File with Local Upload (replace)</option>
+                    <option value="replacebyurl">4. Replace File with Remote URL (replacebyurl)</option>
+                    <option value="delete">5. Delete File (delete)</option>
+                </select>
+            </div>
+
+            <!-- Sub-dropdown for Target File Identification (For Replace, ReplaceByUrl, Delete) -->
+            <div id="targetIdentifierGroup" class="field-group hidden">
+                <label for="targetType">Identify Target File By</label>
+                <select id="targetType">
+                    <option value="filename" selected>File Name (e.g. 3a8f9c1d...jpg)</option>
+                    <option value="fileurl">Full File URL (e.g. http://localhost/.../3a8f9c1d...jpg)</option>
+                </select>
+
+                <label id="targetInputLabel" for="targetInput">Target File Name</label>
+                <input type="text" id="targetInput" placeholder="Enter file name (e.g. abc.jpg)">
+            </div>
+
+            <!-- Remote URL Input (For byurl & replacebyurl) -->
+            <div id="byurlGroup" class="field-group hidden">
+                <label for="byurl">Remote File URL <span class="badge">Web Image/File</span></label>
+                <input type="text" id="byurl" name="byurl" placeholder="https://example.com/images/sample.jpg">
+            </div>
+
+            <!-- Local File Upload Input (For upload & replace) -->
+            <div id="fileUploadGroup" class="field-group">
+                <label for="file">Select File to Upload</label>
+                <input type="file" id="file" name="file">
+            </div>
+
+            <button type="submit" id="submitBtn">Execute Operation</button>
+        </form>
+    </div>
+
+    <!-- Output & Response Console -->
+    <div class="card">
+        <h2>API Response Console</h2>
+        <div id="previewBox" class="preview-box">
+            File URL: <a id="fileLink" href="#" target="_blank"></a>
+        </div>
+        <pre id="output">Select an action and submit...</pre>
+    </div>
+
+    <script>
+        const actionSelect = document.getElementById('action');
+        const targetIdentifierGroup = document.getElementById('targetIdentifierGroup');
+        const targetTypeSelect = document.getElementById('targetType');
+        const targetInputLabel = document.getElementById('targetInputLabel');
+        const targetInput = document.getElementById('targetInput');
+        const byurlGroup = document.getElementById('byurlGroup');
+        const fileUploadGroup = document.getElementById('fileUploadGroup');
+        const fileInput = document.getElementById('file');
+        const byurlInput = document.getElementById('byurl');
+        const form = document.getElementById('storageForm');
+        const output = document.getElementById('output');
+        const previewBox = document.getElementById('previewBox');
+        const fileLink = document.getElementById('fileLink');
+
+        // Dynamic Form Field Visibility Controller
+        function updateFormUI() {
+            const action = actionSelect.value;
+
+            // Reset visibilities
+            targetIdentifierGroup.classList.add('hidden');
+            byurlGroup.classList.add('hidden');
+            fileUploadGroup.classList.add('hidden');
+            
+            // Clear required flags
+            targetInput.required = false;
+            byurlInput.required = false;
+            fileInput.required = false;
+
+            if (action === 'upload') {
+                fileUploadGroup.classList.remove('hidden');
+                fileInput.required = true;
+            } 
+            else if (action === 'byurl') {
+                byurlGroup.classList.remove('hidden');
+                byurlInput.required = true;
+            } 
+            else if (action === 'delete') {
+                targetIdentifierGroup.classList.remove('hidden');
+                targetInput.required = true;
+                updateTargetInputLabel();
+            } 
+            else if (action === 'replace') {
+                targetIdentifierGroup.classList.remove('hidden');
+                fileUploadGroup.classList.remove('hidden');
+                targetInput.required = true;
+                fileInput.required = true;
+                updateTargetInputLabel();
+            } 
+            else if (action === 'replacebyurl') {
+                targetIdentifierGroup.classList.remove('hidden');
+                byurlGroup.classList.remove('hidden');
+                targetInput.required = true;
+                byurlInput.required = true;
+                updateTargetInputLabel();
+            }
+        }
+
+        // Updates label and name attribute for Target File Identifier (filename vs fileurl)
+        function updateTargetInputLabel() {
+            const type = targetTypeSelect.value;
+            if (type === 'filename') {
+                targetInputLabel.innerText = "Target File Name (filename)";
+                targetInput.name = "filename";
+                targetInput.placeholder = "e.g. a8f3c91d20b4e67f89a0b1c2d3e4f5a6.jpg";
+            } else {
+                targetInputLabel.innerText = "Target File URL (fileurl)";
+                targetInput.name = "fileurl";
+                targetInput.placeholder = "e.g. http://localhost/PhpWebStorage/storage/a8f3c91d20b4e67f89a0b1c2d3e4f5a6.jpg";
+            }
+        }
+
+        // Event Listeners for Dropdowns
+        actionSelect.addEventListener('change', updateFormUI);
+        targetTypeSelect.addEventListener('change', updateTargetInputLabel);
+
+        // Form Submit Handler
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            output.textContent = "Processing request...";
+            output.style.color = "#00ff00";
+            previewBox.style.display = "none";
+
+            const formData = new FormData();
+            formData.append('apikey', document.getElementById('apikey').value);
+            formData.append('action', actionSelect.value);
+
+            const action = actionSelect.value;
+
+            if (action === 'upload') {
+                if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+            } 
+            else if (action === 'byurl') {
+                formData.append('byurl', byurlInput.value);
+            } 
+            else if (action === 'delete') {
+                formData.append(targetTypeSelect.value, targetInput.value);
+            } 
+            else if (action === 'replace') {
+                formData.append(targetTypeSelect.value, targetInput.value);
+                if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+            } 
+            else if (action === 'replacebyurl') {
+                formData.append(targetTypeSelect.value, targetInput.value);
+                formData.append('byurl', byurlInput.value);
+            }
+
+            try {
+                const response = await fetch('index.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const text = await response.text();
+                let json;
+                try {
+                    json = JSON.parse(text);
+                    output.textContent = JSON.stringify(json, null, 2);
+                    
+                    if (json.status) {
+                        output.style.color = "#00ff00";
+                        const url = json.fileurl || (json.data && json.data.url);
+                        if (url) {
+                            previewBox.style.display = "block";
+                            fileLink.href = url;
+                            fileLink.textContent = url;
+                            
+                            // Auto-fill target input for replace/delete testing
+                            if (json.filename) {
+                                targetInput.value = json.filename;
+                            }
+                        }
+                    } else {
+                        output.style.color = "#ff6b6b";
+                    }
+                } catch (err) {
+                    output.style.color = "#ff6b6b";
+                    output.textContent = "Non-JSON Response:\n" + text;
+                }
+            } catch (err) {
+                output.style.color = "#ff6b6b";
+                output.textContent = "Fetch Error: " + err.message;
+            }
+        });
+
+        // Initialize UI state
+        updateFormUI();
+    </script>
+</body>
+</html>
+
