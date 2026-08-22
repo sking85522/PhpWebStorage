@@ -1,0 +1,8 @@
+# Disable script execution in storage folder for security
+php_flag engine off
+Options -ExecCGI -Indexes
+<FilesMatch "\.(php|phtml|php3|php4|php5|phps|phar|cgi|pl|py|sh)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+

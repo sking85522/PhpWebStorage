@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhpWebStorage Test Suite</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; }
+        .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; background-color: #f9f9f9; }
+        h2 { margin-top: 0; color: #333; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], input[type="file"] { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; margin-top: 15px; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        button.btn-danger { background-color: #dc3545; }
+        button.btn-danger:hover { background-color: #bd2130; }
+        button.btn-warning { background-color: #ffc107; color: black; }
+        button.btn-warning:hover { background-color: #e0a800; }
+        pre { background: #222; color: #0f0; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>PhpWebStorage Operations Tester</h1>
+
+    <!-- Upload Card -->
+    <div class="card">
+        <h2>1. Upload File</h2>
+        <form id="uploadForm">
+            <label>Select File to Upload:</label>
+            <input type="file" id="uploadFile" required>
+            <button type="submit">Upload File</button>
+        </form>
+    </div>
+
+    <!-- Replace Card -->
+    <div class="card">
+        <h2>2. Replace File</h2>
+        <form id="replaceForm">
+            <label>Old File Name or Full URL to Delete:</label>
+            <input type="text" id="replaceOldFile" placeholder="e.g. 5f8a2...jpg or http://localhost/.../5f8a2...jpg" required>
+            <label>Select New File to Upload:</label>
+            <input type="file" id="replaceNewFile" required>
+            <button type="submit" class="btn-warning">Replace File</button>
+        </form>
+    </div>
+
+    <!-- Delete Card -->
+    <div class="card">
+        <h2>3. Delete File</h2>
+        <form id="deleteForm">
+            <label>File Name or Full URL to Delete:</label>
+            <input type="text" id="deleteFile" placeholder="e.g. 5f8a2...jpg or http://localhost/.../5f8a2...jpg" required>
+            <button type="submit" class="btn-danger">Delete File</button>
+        </form>
+    </div>
+
+    <!-- Response Output -->
+    <div class="card">
+        <h2>API Response Output:</h2>
+        <pre id="responseLog">Waiting for action...</pre>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost/PhpWebStorage/index.php";
+        const API_KEY = "4566545";
+        const log = document.getElementById('responseLog');
+
+        function printResponse(data) {
+            log.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // Upload handler
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('uploadFile');
+            if (!fileInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('action', 'upload');
+            formData.append('file', fileInput.files[0]);
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { "X-API-KEY": API_KEY },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                printResponse(data);
+                if (data.status && data.data) {
+                    // Auto-fill replace and delete input for easy testing
+                    document.getElementById('replaceOldFile').value = data.data.saved_name;
+                    document.getElementById('deleteFile').value = data.data.saved_name;
+                }
+            })
+            .catch(err => printResponse({ error: err.message }));
+        });
+
+        // Replace handler
+        document.getElementById('replaceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const oldFile = document.getElementById('replaceOldFile').value;
+            const fileInput = document.getElementById('replaceNewFile');
+            if (!oldFile || !fileInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('action', 'replace');
+            formData.append('old_file', oldFile);
+            formData.append('file', fileInput.files[0]);
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { "X-API-KEY": API_KEY },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                printResponse(data);
+                if (data.status && data.data) {
+                    document.getElementById('replaceOldFile').value = data.data.saved_name;
+                    document.getElementById('deleteFile').value = data.data.saved_name;
+                }
+            })
+            .catch(err => printResponse({ error: err.message }));
+        });
+
+        // Delete handler
+        document.getElementById('deleteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const fileToDelete = document.getElementById('deleteFile').value;
+            if (!fileToDelete) return;
+
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('file_name', fileToDelete);
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { "X-API-KEY": API_KEY },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => printResponse(data))
+            .catch(err => printResponse({ error: err.message }));
+        });
+    </script>
+</body>
+</html>
