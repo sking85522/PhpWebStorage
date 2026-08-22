@@ -10,7 +10,7 @@ if (empty($_REQUEST)){
     exit();
 }
 //action cheak
-$actions = array("upload","replace","delete","byurl");
+$actions = array("upload","replace","delete","byurl","replacebyurl");
 if (empty($_REQUEST["action"])){
     echo json_encode(["status" => FALSE, "message" => "action method does not empty"]);
     exit();
@@ -37,15 +37,46 @@ if ($secretkey != trim($providedKey)) {
 if($action == "upload"){
     echo uploadfile();
 }
-if($action == "byurl" && !empty($_REQUEST["byurl"])){
+if($action == "byurl"){
+    if(empty($_REQUEST["filename"])){
+        echo json_encode(["status" => FALSE, "message" => "replacebyurl method me byurl nhi dala gya h "]);
+        exit();
+    }
     echo byurl($_REQUEST["byurl"]);
 }
+if($action == "replacebyurl"){
+    if(empty($_REQUEST["filename"])&&empty($_REQUEST["fileurl"])){
+        echo json_encode(["status" => FALSE, "message" => "replacebyurl method me filename ya fileurl nhi dala gya h "]);
+        exit();
+    }
+    if(empty($_REQUEST["filename"])){
+        echo json_encode(["status" => FALSE, "message" => "replacebyurl method me byurl nhi dala gya h "]);
+        exit();
+    }
+    $fileurl=$_REQUEST["fileurl"];
+    $filename = $_REQUEST["filename"] ?? basename(parse_url($fileurl, PHP_URL_PATH));
+    $byurl = $_REQUEST["byurl"];
+    echo replacebyurl($byurl,$filename);
+}
 if($action == "replace"){
-    replacefile($_REQUEST["filename"]);
+    if(empty($_REQUEST["filename"])&&empty($_REQUEST["fileurl"])){
+        echo json_encode(["status" => FALSE, "message" => "replace me filename ya fileurl nhi dala gya h "]);
+        exit();
+    }
+    $fileurl=$_REQUEST["fileurl"];
+    $filename = $_REQUEST["filename"] ?? basename(parse_url($fileurl, PHP_URL_PATH));
+    echo replacefile($filename);
 }
-if(($action == "delete")&& !empty($_REQUEST["filename"])){
-    echo deletefile($_REQUEST["filename"]);
+if(($action == "delete")){
+    if(empty($_REQUEST["filename"])&&empty($_REQUEST["fileurl"])){
+        echo json_encode(["status" => FALSE, "message" => "delete karne ke liye filename ya fileurl nhi dala gya h "]);
+        exit();
+    }
+    $fileurl=$_REQUEST["fileurl"];
+    $filename = $_REQUEST["filename"] ?? basename(parse_url($fileurl, PHP_URL_PATH));
+    echo deletefile($filename);
 }
+
 
 
 function byurl($byurl){
@@ -67,13 +98,13 @@ function byurl($byurl){
         $uniqueName = bin2hex(random_bytes(16)) . '.' . $ext;
         $storagePath = $target_dir.$uniqueName;
         if(!rename($saveto, $storagePath)){
-            echo json_encode(["status" => FALSE, "message" => "File does not add"]);
+            return json_encode(["status" => FALSE, "message" => "File does not add"]);
             exit();
         }
         $fileUrl = "http://localhost/PhpWebStorage/storage/" . $uniqueName;
-        echo json_encode(["status" => TRUE, "message" => "File add success fully","fileurl"=>$fileUrl,"filename"=>$uniqueName]);
+        return json_encode(["status" => TRUE, "message" => "File add success fully","fileurl"=>$fileUrl,"filename"=>$uniqueName]);
     }else{
-        echo "file error ";
+        return json_encode(["status" => FALSE, "message" => "File does not add"]);
     }
 
 }
@@ -114,17 +145,34 @@ function replacefile($filename){
     if(json_decode(deletefile($filename),TRUE)['status']){
         $upfile = json_decode(uploadfile($filename),TRUE);
         if($upfile['status']){
-                return json_encode(["status" => TRUE, "message" => "File add success fully","fileurl"=>$upfile['fileurl'],"filename"=>$upfile['filename']]);
+            return json_encode(["status" => TRUE,"deletestatus" => TRUE,"addstatus" => TRUE, "message" => "File Replace success fully","fileurl"=>$upfile['fileurl'],"filename"=>$upfile['filename']]);
         }else{
-
+            return json_encode(["status" => FALSE,"deletestatus" => TRUE,"addstatus" => FALSE, "message" => "file delete but not add"]);
         }
-
-        //echo json_encode(["status" => TRUE, "message" => "File replace hui"]);
     }else{
-        //echo json_encode(["status" => TRUE, "message" => "File replace NHI  hui"]);
+        $upfile = json_decode(uploadfile($filename),TRUE);
+        if($upfile['status']){
+            return json_encode(["status" => TRUE,"deletestatus" => FALSE,"addstatus" => TRUE, "message" => "File NOT delete/file already delete or FILE add success fully ","fileurl"=>$upfile['fileurl'],"filename"=>$upfile['filename']]);
+        }else{
+            return json_encode(["status" => FALSE,"deletestatus" => FALSE,"addstatus" => FALSE, "message" => "File NOT delete/file already delete or New file not add replace fail"]);
+        }
     }
     
 }
-function returnverfictoin(){
-    
+function replacebyurl($byurl,$filename){
+    if(json_decode(deletefile($filename),TRUE)['status']){
+        $upfile = json_decode(byurl($byurl),TRUE);
+        if($upfile['status']){
+            return json_encode(["status" => TRUE,"deletestatus" => TRUE,"addstatus" => TRUE, "message" => "File Replace success fully","fileurl"=>$upfile['fileurl'],"filename"=>$upfile['filename']]);
+        }else{
+            return json_encode(["status" => FALSE,"deletestatus" => TRUE,"addstatus" => FALSE, "message" => "file delete but not add"]);
+        }
+    }else{
+        $upfile = json_decode(byurl($byurl),TRUE);
+        if($upfile['status']){
+            return json_encode(["status" => TRUE,"deletestatus" => FALSE,"addstatus" => TRUE, "message" => "File NOT delete/file already delete or FILE add success fully ","fileurl"=>$upfile['fileurl'],"filename"=>$upfile['filename']]);
+        }else{
+            return json_encode(["status" => FALSE,"deletestatus" => FALSE,"addstatus" => FALSE, "message" => "File NOT delete/file already delete or New file not add replace fail"]);
+        }
+    }
 }
